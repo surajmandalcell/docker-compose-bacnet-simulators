@@ -1,0 +1,10 @@
+services:
+  se8350_controller:
+    build: ./se8350_controller
+    container_name: se8350_controller
+    ports:
+      - "47808:47808/udp"
+    environment:
+      - DEVICE_ID=1
+      - OBJECT_NAME=SE8350_Room_Controller
+      - VENDOR_ID=10
