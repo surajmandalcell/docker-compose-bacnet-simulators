@@ -8,13 +8,13 @@ cleanup() {
     echo
     echo "Shutting down gracefully..."
     stop_logs
-    docker compose down
+    docker compose down --timeout 2
     exit 0
 }
 
 run_dcu() {
     echo "Starting Docker Compose..."
-    docker compose down
+    docker compose down --timeout 2
     docker compose build
     docker compose up -d
     echo "Docker Compose is running. Press 'r' to restart, 'e' to exit, or Ctrl+C to stop."
