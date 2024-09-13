@@ -7,9 +7,7 @@ VENV_BIN := $(VENV)/bin
 PYTHONPATH := $(shell pwd)
 
 dcu:
-	docker compose down
-	docker compose build
-	docker compose up
+	@bash ./dcu.sh
 
 clean:
 	rm -rf $(VENV)

@@ -82,9 +82,10 @@ app.add_object(hvac_mode)
 def get_float_value(obj):
     """Helper function to get float value from BACnet object."""
     present_value = obj.presentValue
+    print(f"Present value: {present_value}")
     
     if isinstance(present_value, Real):
-        return present_value
+        return present_value.value
     else:
         return float(present_value)
 
