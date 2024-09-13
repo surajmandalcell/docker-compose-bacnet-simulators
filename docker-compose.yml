@@ -2,6 +2,7 @@ services:
   se8350_controller:
     build: ./se8350_controller
     container_name: se8350_controller
+    hostname: se8350_controller
     ports:
       - "47808:47808/udp"
     environment:

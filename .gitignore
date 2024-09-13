@@ -1,2 +1,2 @@
-venv/
-venv.sh
+**/venv*/
+_scripts/venv.sh

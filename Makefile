@@ -1,38 +1,21 @@
-.PHONY: dcu clean venv
+.PHONY: dcu clean gui env
 
-PYTHON := python3
+PYTHON := python3.11
 PIP := pip
 VENV := venv
 VENV_BIN := $(VENV)/bin
 PYTHONPATH := $(shell pwd)
 
 dcu:
-	@bash ./dcu.sh
+	@bash ./_scripts/dcu.sh
 
 clean:
 	rm -rf $(VENV)
-	rm -f venv.sh
+	rm -f _scripts/venv.sh
+
+gui:
+	@echo "Starting the GUI..."
+	@$(VENV_BIN)/python _scripts/gui.py
 
 env:
-	@if [ ! -d "$(VENV)" ]; then \
-		$(PYTHON) -m venv $(VENV); \
-		echo "Virtual environment created."; \
-	fi
-	@echo "Creating venv.sh for easy activation"
-	@echo "source $(VENV_BIN)/activate" > venv.sh
-	@chmod +x venv.sh
-	@echo "To activate the virtual environment in the current shell, run:"
-	@echo "source venv.sh"
-	# Copy the activation command to the clipboard
-	@if [ "$(shell uname)" = "Linux" ]; then \
-		if grep -qi microsoft /proc/version; then \
-			echo "source venv.sh" | clip.exe; \
-			echo "Activation command copied to clipboard for WSL."; \
-		else \
-			echo "source venv.sh" | xclip -selection clipboard; \
-			echo "Activation command copied to clipboard."; \
-		fi \
-	elif [ "$(shell uname)" = "Darwin" ]; then \
-		echo "source venv.sh" | pbcopy; \
-		echo "Activation command copied to clipboard."; \
-	fi
+	@bash ./_scripts/env.sh
