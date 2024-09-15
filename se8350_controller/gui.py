@@ -1,8 +1,8 @@
 import tkinter as tk
 from tkinter import ttk
 import asyncio
+import os
 
-from bacpypes.core import deferred
 from bacpypes.app import BIPSimpleApplication
 from bacpypes.local.device import LocalDeviceObject
 from bacpypes.primitivedata import Real, Enumerated
@@ -73,7 +73,7 @@ class GUI:
         # Occupancy Status
         ttk.Label(self.master, text="Occupancy Status:").grid(row=3, column=0, sticky="w")
         self.occupancy_var = tk.StringVar()
-        ttk.Combobox(self.master, textvariable=self.occupancy_var, values=["active", "inactive"]).grid(row=3, column=1)
+        ttk.Combobox(self.master, textvariable=self.occupancy_var, values=["inactive", "active"]).grid(row=3, column=1)
         ttk.Button(self.master, text="Update", command=lambda: self.update_value("binaryValue", 1, "presentValue", self.occupancy_var.get())).grid(row=3, column=2)
 
         # Fan Status
@@ -115,38 +115,33 @@ class GUI:
             self.loop
         )
 
-async def run_bacnet(bacnet_app):
-    while True:
-        await bacnet_app.request_io()
-        await asyncio.sleep(0.1)
-
-async def main():
-    # BACnet device configuration
-    device_id = 2
-    object_name = "BACnet Client"
-
-    # Create a BACnet device object
-    device_object = LocalDeviceObject(
-        objectName=object_name,
-        objectIdentifier=device_id,
-        maxApduLengthAccepted=1024,
-        segmentationSupported="segmentedBoth",
-        maxSegmentsAccepted=1024,
-    )
-
-    # Create and initialize the BACnet/IP application
-    bacnet_app = BACnetClientApp(device_object, "0.0.0.0")
-
-    # Run the BACnet application in the background
-    bacnet_task = asyncio.create_task(run_bacnet(bacnet_app))
-
-    # Create and run the GUI
+async def run_gui(bacnet_app):
     root = tk.Tk()
     gui = GUI(root, bacnet_app, asyncio.get_running_loop())
 
     while True:
         root.update()
         await asyncio.sleep(0.1)
+
+async def main():
+    # Create a minimal BACnet device object for the client
+    device_object = LocalDeviceObject(
+        objectName="BACnet Client",
+        objectIdentifier=3056,  # You can choose any number that doesn't conflict with the server
+        vendorIdentifier=555,
+    )
+
+    # Use a different port for the client
+    client_address = os.environ.get('BACPYPES_IP', '0.0.0.0')
+    client_port = int(os.environ.get('BACPYPES_PORT', 47809))  # Use a different port, e.g., 47809
+
+    # Create the BACnet client application
+    bacnet_app = BACnetClientApp(device_object, f"{client_address}:{client_port}")
+
+    print(f"BACnet client running on {client_address}:{client_port}")
+
+    # Run the GUI
+    await run_gui(bacnet_app)
 
 if __name__ == "__main__":
     asyncio.run(main())

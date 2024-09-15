@@ -9,7 +9,7 @@ from bacpypes.core import run
 # BACnet device configuration
 device_id = int(os.environ.get("DEVICE_ID", 1))
 object_name = os.environ.get("OBJECT_NAME", "SE8350_Room_Controller")
-vendor_id = int(os.environ.get("VENDOR_ID", 10))  # Schneider Electric's vendor ID
+vendor_id = int(os.environ.get("VENDOR_ID", 65530))  # Schneider Electric's vendor ID
 
 # Create BACnet objects for SE8350 controller
 room_temp = AnalogValueObject(

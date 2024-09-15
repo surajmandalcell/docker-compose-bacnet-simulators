@@ -8,4 +8,4 @@ services:
     environment:
       - DEVICE_ID=1
       - OBJECT_NAME=SE8350_Room_Controller
-      - VENDOR_ID=10
+      - VENDOR_ID=65530
