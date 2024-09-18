@@ -8,7 +8,8 @@ cleanup() {
     echo
     echo "Shutting down gracefully..."
     stop_logs
-    docker compose down --timeout 2
+    docker compose down --timeout 2 --remove-orphans
+    # docker network prune -f
     exit 0
 }
 

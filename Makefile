@@ -1,4 +1,4 @@
-.PHONY: dcu clean gui env
+.PHONY: dcu clean gui env ip
 
 PYTHON := python3.11
 PIP := pip
@@ -19,3 +19,6 @@ gui:
 
 env:
 	@bash ./_scripts/env.sh
+
+ip:
+	@bash ./_scripts/ip.sh
