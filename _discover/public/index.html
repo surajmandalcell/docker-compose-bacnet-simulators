@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BACnet Scanner</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #f0f0f0;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .network-card {
+            border: 1px solid #ddd;
+            margin: 10px 0;
+            padding: 15px;
+            border-radius: 4px;
+        }
+
+        .device-list {
+            margin-left: 20px;
+        }
+
+        .scan-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .scan-button:hover {
+            background: #0056b3;
+        }
+
+        .network-visualization {
+            margin-top: 20px;
+        }
+
+        .error {
+            color: red;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>BACnet Network Scanner</h1>
+        <div id="networks"></div>
+        <div id="visualization"></div>
+    </div>
+
+    <script>
+        async function getNetworks() {
+            try {
+                const response = await fetch('/api/networks');
+                const networks = await response.json();
+                displayNetworks(networks);
+            } catch (error) {
+                console.error('Failed to get networks:', error);
+            }
+        }
+
+        async function scanNetwork(network) {
+            const button = document.querySelector(`button[data-network="${network}"]`);
+            const resultDiv = document.getElementById(`results-${network.replace(/[/.]/g, '_')}`);
+            button.disabled = true;
+            button.textContent = 'Scanning...';
+
+            try {
+                const encodedNetwork = encodeURIComponent(network);
+                const response = await fetch(`/api/scan/${encodedNetwork}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const results = await response.json();
+
+                if (results.error) {
+                    resultDiv.innerHTML = `<div class="error">Error: ${results.error}</div>`;
+                } else if (!Array.isArray(results) || results.length === 0) {
+                    resultDiv.innerHTML = '<p>No BACnet devices found</p>';
+                } else {
+                    displayScanResults(network, results);
+                    visualizeNetwork(network, results);
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">Scan failed: ${error.message}</div>`;
+            } finally {
+                button.disabled = false;
+                button.textContent = 'Scan Network';
+            }
+        }
+
+        function displayNetworks(networks) {
+            const container = document.getElementById('networks');
+            networks.forEach(network => {
+                const card = document.createElement('div');
+                card.className = 'network-card';
+                card.innerHTML = `
+                    <h3>Interface: ${network.interface}</h3>
+                    <p>IP: ${network.ip}</p>
+                    <p>Network: ${network.network}</p>
+                    <button class="scan-button" data-network="${network.network}" onclick="scanNetwork('${network.network}')">
+                        Scan Network
+                    </button>
+                    <div id="results-${network.network.replace(/[/.]/g, '_')}"></div>
+                    <div id="viz-${network.network.replace(/[/.]/g, '_')}" class="network-visualization"></div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function displayScanResults(network, results) {
+            const container = document.getElementById(`results-${network.replace(/[/.]/g, '_')}`);
+            container.innerHTML = '<h4>Scan Results:</h4>';
+
+            if (!Array.isArray(results) || results.length === 0) {
+                container.innerHTML += '<p>No BACnet devices found</p>';
+                return;
+            }
+
+            results.forEach(result => {
+                const deviceInfo = document.createElement('div');
+                deviceInfo.className = 'device-list';
+                deviceInfo.innerHTML = `
+                    <p>IP: ${result.ip}</p>
+                    <p>Devices found: ${result.devices.length}</p>
+                    <pre>${JSON.stringify(result.devices, null, 2)}</pre>
+                `;
+                container.appendChild(deviceInfo);
+            });
+        }
+
+        function visualizeNetwork(network, results) {
+            const containerId = `viz-${network.replace(/[/.]/g, '_')}`;
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+
+            if (!Array.isArray(results) || results.length === 0) {
+                return;
+            }
+
+            const width = 600;
+            const height = 400;
+
+            const svg = d3.select(`#${containerId}`)
+                .append('svg')
+                .attr('width', width)
+                .attr('height', height);
+
+            const simulation = d3.forceSimulation()
+                .force('charge', d3.forceManyBody().strength(-100))
+                .force('center', d3.forceCenter(width / 2, height / 2))
+                .force('link', d3.forceLink().id(d => d.id));
+
+            const nodes = [{ id: 'router', type: 'router' }];
+            const links = [];
+
+            results.forEach(result => {
+                nodes.push({ id: result.ip, type: 'device', devices: result.devices });
+                links.push({ source: 'router', target: result.ip });
+            });
+
+            simulation.nodes(nodes);
+            simulation.force('link').links(links);
+
+            const link = svg.selectAll('.link')
+                .data(links)
+                .enter()
+                .append('line')
+                .attr('stroke', '#999')
+                .attr('stroke-width', 1);
+
+            const node = svg.selectAll('.node')
+                .data(nodes)
+                .enter()
+                .append('circle')
+                .attr('r', d => d.type === 'router' ? 15 : 10)
+                .attr('fill', d => d.type === 'router' ? '#ff4444' : '#4444ff')
+                .call(d3.drag()
+                    .on('start', dragstarted)
+                    .on('drag', dragged)
+                    .on('end', dragended));
+
+            node.append('title')
+                .text(d => d.type === 'router' ? 'Router' : `IP: ${d.id}\nDevices: ${d.devices ? d.devices.length : 0}`);
+
+            simulation.on('tick', () => {
+                link
+                    .attr('x1', d => d.source.x)
+                    .attr('y1', d => d.source.y)
+                    .attr('x2', d => d.target.x)
+                    .attr('y2', d => d.target.y);
+
+                node
+                    .attr('cx', d => d.x)
+                    .attr('cy', d => d.y);
+            });
+
+            function dragstarted(event) {
+                if (!event.active) simulation.alphaTarget(0.3).restart();
+                event.subject.fx = event.subject.x;
+                event.subject.fy = event.subject.y;
+            }
+
+            function dragged(event) {
+                event.subject.fx = event.x;
+                event.subject.fy = event.y;
+            }
+
+            function dragended(event) {
+                if (!event.active) simulation.alphaTarget(0);
+                event.subject.fx = null;
+                event.subject.fy = null;
+            }
+        }
+
+        getNetworks();
+    </script>
+</body>
+
+</html>
